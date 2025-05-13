@@ -1,8 +1,4 @@
-
 import React, { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/context/AuthContext";
 import {
   Card,
@@ -12,14 +8,6 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,53 +19,172 @@ import {
 } from "@/components/ui/select";
 import { Logo } from "@/components/Logo";
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  role: z.enum(["admin", "leader"]),
-});
-
-type LoginValues = z.infer<typeof loginSchema>;
-type RegisterValues = z.infer<typeof registerSchema>;
-
-interface AuthFormsProps {
-  defaultTab?: "login" | "register";
-}
-
-export const AuthForms: React.FC<AuthFormsProps> = ({ defaultTab = "login" }) => {
-  const [activeTab, setActiveTab] = useState<"login" | "register">(defaultTab);
+export const AuthForms = ({ defaultTab = "login" }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const { login, register } = useAuth();
+  
+  // Login form state
+  const [loginValues, setLoginValues] = useState({
+    email: "",
+    password: "",
+  });
+  const [loginErrors, setLoginErrors] = useState({
+    email: "",
+    password: "",
+  });
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
+  
+  // Register form state
+  const [registerValues, setRegisterValues] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "leader",
+  });
+  const [registerErrors, setRegisterErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "",
+  });
+  const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
 
-  const loginForm = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
+  // Handle login form changes
+  const handleLoginChange = (e) => {
+    const { name, value } = e.target;
+    setLoginValues({
+      ...loginValues,
+      [name]: value,
+    });
+    
+    // Clear error when typing
+    if (loginErrors[name]) {
+      setLoginErrors({
+        ...loginErrors,
+        [name]: "",
+      });
+    }
+  };
+
+  // Handle register form changes
+  const handleRegisterChange = (e) => {
+    const { name, value } = e.target;
+    setRegisterValues({
+      ...registerValues,
+      [name]: value,
+    });
+    
+    // Clear error when typing
+    if (registerErrors[name]) {
+      setRegisterErrors({
+        ...registerErrors,
+        [name]: "",
+      });
+    }
+  };
+
+  // Handle role selection change
+  const handleRoleChange = (value) => {
+    setRegisterValues({
+      ...registerValues,
+      role: value,
+    });
+  };
+
+  // Validate login form
+  const validateLoginForm = () => {
+    const errors = {
       email: "",
       password: "",
-    },
-  });
+    };
+    
+    // Email validation
+    if (!loginValues.email) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(loginValues.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    
+    // Password validation
+    if (!loginValues.password) {
+      errors.password = "Password is required";
+    } else if (loginValues.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    
+    setLoginErrors(errors);
+    return !errors.email && !errors.password;
+  };
 
-  const registerForm = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
+  // Validate register form
+  const validateRegisterForm = () => {
+    const errors = {
       name: "",
       email: "",
       password: "",
-      role: "leader",
-    },
-  });
-
-  const onLoginSubmit = async (values: LoginValues) => {
-    await login(values.email, values.password);
+      role: "",
+    };
+    
+    // Name validation
+    if (!registerValues.name) {
+      errors.name = "Name is required";
+    } else if (registerValues.name.length < 2) {
+      errors.name = "Name must be at least 2 characters";
+    }
+    
+    // Email validation
+    if (!registerValues.email) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(registerValues.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    
+    // Password validation
+    if (!registerValues.password) {
+      errors.password = "Password is required";
+    } else if (registerValues.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    
+    setRegisterErrors(errors);
+    return !errors.name && !errors.email && !errors.password && !errors.role;
   };
 
-  const onRegisterSubmit = async (values: RegisterValues) => {
-    await register(values.name, values.email, values.password, values.role);
+  // Handle login form submission
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (validateLoginForm()) {
+      setIsLoginSubmitting(true);
+      try {
+        await login(loginValues.email, loginValues.password);
+      } catch (error) {
+        console.error("Login error:", error);
+      } finally {
+        setIsLoginSubmitting(false);
+      }
+    }
+  };
+
+  // Handle register form submission
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (validateRegisterForm()) {
+      setIsRegisterSubmitting(true);
+      try {
+        await register(
+          registerValues.name,
+          registerValues.email,
+          registerValues.password,
+          registerValues.role
+        );
+      } catch (error) {
+        console.error("Registration error:", error);
+      } finally {
+        setIsRegisterSubmitting(false);
+      }
+    }
   };
 
   return (
@@ -120,162 +227,151 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ defaultTab = "login" }) =>
         </div>
 
         {activeTab === "login" ? (
-          <Form {...loginForm}>
-            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-              <FormField
-                control={loginForm.control}
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="login-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="login-email"
                 name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter your email" 
-                        {...field} 
-                        className="border-devotional-gold/30 focus:border-devotional-gold"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                type="email"
+                placeholder="Enter your email"
+                value={loginValues.email}
+                onChange={handleLoginChange}
+                className="border-devotional-gold/30 focus:border-devotional-gold"
               />
+              {loginErrors.email && (
+                <p className="text-sm text-red-500">{loginErrors.email}</p>
+              )}
+            </div>
 
-              <FormField
-                control={loginForm.control}
+            <div className="space-y-2">
+              <label htmlFor="login-password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="login-password"
                 name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="Enter your password" 
-                        {...field}
-                        className="border-devotional-gold/30 focus:border-devotional-gold"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                type="password"
+                placeholder="Enter your password"
+                value={loginValues.password}
+                onChange={handleLoginChange}
+                className="border-devotional-gold/30 focus:border-devotional-gold"
               />
-              
-              <div className="pt-2">
-                <Button 
-                  type="submit" 
-                  className="w-full devotional-button"
-                  disabled={loginForm.formState.isSubmitting}
-                >
-                  {loginForm.formState.isSubmitting ? "Logging in..." : "Login"}
-                </Button>
-              </div>
-              
-              <div className="text-center text-sm">
-                <p className="text-muted-foreground">
-                  Demo credentials:
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Admin: admin@example.com / admin123
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Leader: leader@example.com / leader123
-                </p>
-              </div>
-            </form>
-          </Form>
+              {loginErrors.password && (
+                <p className="text-sm text-red-500">{loginErrors.password}</p>
+              )}
+            </div>
+            
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                className="w-full devotional-button"
+                disabled={isLoginSubmitting}
+              >
+                {isLoginSubmitting ? "Logging in..." : "Login"}
+              </Button>
+            </div>
+            
+            <div className="text-center text-sm">
+              <p className="text-muted-foreground">
+                Demo credentials:
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Admin: admin@example.com / admin123
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Leader: leader@example.com / leader123
+              </p>
+            </div>
+          </form>
         ) : (
-          <Form {...registerForm}>
-            <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-              <FormField
-                control={registerForm.control}
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="register-name" className="text-sm font-medium">
+                Name
+              </label>
+              <Input
+                id="register-name"
                 name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter your name" 
-                        {...field}
-                        className="border-devotional-gold/30 focus:border-devotional-gold"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                placeholder="Enter your name"
+                value={registerValues.name}
+                onChange={handleRegisterChange}
+                className="border-devotional-gold/30 focus:border-devotional-gold"
               />
+              {registerErrors.name && (
+                <p className="text-sm text-red-500">{registerErrors.name}</p>
+              )}
+            </div>
 
-              <FormField
-                control={registerForm.control}
+            <div className="space-y-2">
+              <label htmlFor="register-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="register-email"
                 name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter your email" 
-                        {...field}
-                        className="border-devotional-gold/30 focus:border-devotional-gold"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                type="email"
+                placeholder="Enter your email"
+                value={registerValues.email}
+                onChange={handleRegisterChange}
+                className="border-devotional-gold/30 focus:border-devotional-gold"
               />
+              {registerErrors.email && (
+                <p className="text-sm text-red-500">{registerErrors.email}</p>
+              )}
+            </div>
 
-              <FormField
-                control={registerForm.control}
+            <div className="space-y-2">
+              <label htmlFor="register-password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="register-password"
                 name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="Create a password" 
-                        {...field}
-                        className="border-devotional-gold/30 focus:border-devotional-gold"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                type="password"
+                placeholder="Create a password"
+                value={registerValues.password}
+                onChange={handleRegisterChange}
+                className="border-devotional-gold/30 focus:border-devotional-gold"
               />
+              {registerErrors.password && (
+                <p className="text-sm text-red-500">{registerErrors.password}</p>
+              )}
+            </div>
 
-              <FormField
-                control={registerForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="border-devotional-gold/30">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="leader">Team Leader</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-2">
+              <label htmlFor="register-role" className="text-sm font-medium">
+                Role
+              </label>
+              <Select
+                value={registerValues.role}
+                onValueChange={handleRoleChange}
+              >
+                <SelectTrigger id="register-role" className="border-devotional-gold/30">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="leader">Team Leader</SelectItem>
+                </SelectContent>
+              </Select>
+              {registerErrors.role && (
+                <p className="text-sm text-red-500">{registerErrors.role}</p>
+              )}
+            </div>
 
-              <div className="pt-2">
-                <Button 
-                  type="submit" 
-                  className="w-full devotional-button" 
-                  disabled={registerForm.formState.isSubmitting}
-                >
-                  {registerForm.formState.isSubmitting ? "Creating account..." : "Create account"}
-                </Button>
-              </div>
-            </form>
-          </Form>
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                className="w-full devotional-button" 
+                disabled={isRegisterSubmitting}
+              >
+                {isRegisterSubmitting ? "Creating account..." : "Create account"}
+              </Button>
+            </div>
+          </form>
         )}
       </CardContent>
       <CardFooter className="flex justify-center">
